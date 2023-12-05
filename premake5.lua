@@ -80,7 +80,7 @@ project "Game"
   filter "configurations:Debug"
     defines
     {
-      "WG_DEBUG"
+      "GAME_DEBUG"
     }
     runtime "Debug"
     symbols "on"
@@ -88,7 +88,7 @@ project "Game"
   filter "configurations:Release"
     defines
     {
-      "WG_RELEASE"
+      "GAME_RELEASE"
     }
     runtime "Release"
     optimize "on"
@@ -96,7 +96,7 @@ project "Game"
   filter "configurations:Dist"
     defines
     {
-      "WG_DIST"
+      "GAME_DIST"
     }
     runtime "Release"
     optimize "on"
