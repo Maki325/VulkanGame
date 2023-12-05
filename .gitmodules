@@ -1,0 +1,10 @@
+[submodule "Game/vendor/glm"]
+	path = Game/vendor/glm
+	url = https://github.com/g-truc/glm
+[submodule "Game/vendor/glfw"]
+	path = Game/vendor/glfw
+	url = https://github.com/Maki325/glfw
+[submodule "Game/vendor/imgui"]
+	path = Game/vendor/imgui
+	url = https://github.com/Maki325/imgui.git
+	branch = wallpaper-games
