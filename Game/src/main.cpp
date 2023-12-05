@@ -26,7 +26,79 @@ private:
   }
 
   void initVulkan() {
+    createInstance();
+  }
 
+  /*
+   * Checks if all the extensions are supported
+   * Returns a vector of unsupported extensions
+   */
+  std::vector<const char*> areExtensionsSupported(const char** extensions, uint32_t count) {
+    if (this->supportedExtensions.empty()) {
+      uint32_t extensionCount = 0;
+      vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+      this->supportedExtensions.resize(extensionCount);
+
+      vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, this->supportedExtensions.data());
+    }
+
+    std::vector<const char*> unsupportedExtensions;
+    for (int i = 0; i < count; i++) {
+      const char* extension = extensions[i];
+      bool found = false;
+
+      for (auto &supportedExtension : this->supportedExtensions) {
+        if(strncmp(supportedExtension.extensionName, extension, VK_MAX_EXTENSION_NAME_SIZE) == 0) {
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        unsupportedExtensions.push_back(extension);
+      }
+    }
+
+    return unsupportedExtensions;
+  }
+
+  void createInstance() {
+    VkApplicationInfo appInfo{};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "Hello Triangle";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName = "No Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_0;
+
+    VkInstanceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
+
+    // Get the required extensions by GLFW
+    // And set them for Vulkan Instance
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    std::vector<const char*> unsupportedExtensions = this->areExtensionsSupported(glfwExtensions, glfwExtensionCount);
+    if (!unsupportedExtensions.empty()) {
+      std::string error = "Unsupported GLFW extensions!";
+      for (auto& extension : unsupportedExtensions) {
+        error += "\n - " + std::string(extension);
+      }
+      throw std::runtime_error(error);
+    }
+
+    createInfo.enabledExtensionCount = glfwExtensionCount;
+    createInfo.ppEnabledExtensionNames = glfwExtensions;
+
+    createInfo.enabledLayerCount = 0;
+
+    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+      throw std::runtime_error("Failed to create instance!");
+    }
   }
 
   void mainLoop() {
@@ -36,6 +108,8 @@ private:
   }
 
   void cleanup() {
+    vkDestroyInstance(instance, nullptr);
+
     glfwDestroyWindow(window);
 
     glfwTerminate();
@@ -43,6 +117,8 @@ private:
 
 private:
   GLFWwindow* window;
+  std::vector<VkExtensionProperties> supportedExtensions;
+  VkInstance instance;
 };
 
 int main() {
