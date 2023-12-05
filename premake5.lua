@@ -28,7 +28,7 @@ group ""
 
 project "Game"
   location "Game"
-  kind "WindowedApp"
+  kind "ConsoleApp"
   language "C++"
   cppdialect "C++17"
   staticruntime "off"
@@ -70,7 +70,7 @@ project "Game"
 
     links
     {
-      "%{LibDir.Win.FreeType}"
+      "%{LibDir.Win.Vulkan}"
     }
 
     defines
