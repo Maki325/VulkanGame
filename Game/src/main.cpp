@@ -54,6 +54,7 @@ private:
       setupDebugMessenger();
     #endif
     pickPhysicalDevice();
+    createLogicalDevice();
   }
 
   #ifdef GAME_DEBUG
@@ -305,6 +306,41 @@ private:
     return indices;
   }
 
+  void createLogicalDevice() {
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+    VkDeviceQueueCreateInfo queueCreateInfo{};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+    queueCreateInfo.queueCount = 1;
+    float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+
+    VkPhysicalDeviceFeatures deviceFeatures{};
+
+
+    VkDeviceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pQueueCreateInfos = &queueCreateInfo;
+    createInfo.queueCreateInfoCount = 1;
+
+    createInfo.pEnabledFeatures = &deviceFeatures;
+    createInfo.enabledExtensionCount = 0;
+
+    #ifdef GAME_DEBUG
+      createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+      createInfo.ppEnabledLayerNames = validationLayers.data();
+    #else
+      createInfo.enabledLayerCount = 0;
+    #endif
+
+    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+      throw std::runtime_error("Failed to create logical device!");
+    }
+
+    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+  }
+
   void mainLoop() {
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
@@ -312,6 +348,7 @@ private:
   }
 
   void cleanup() {
+    vkDestroyDevice(device, nullptr);
     #ifdef GAME_DEBUG
       // TODO: If I comment `DestroyDebugUtilsMessengerEXT` line out it should give me an error in the console on closing down
       // But it doesn't. The tutorial site says it's a problem with my installation
@@ -335,6 +372,8 @@ private:
     VkDebugUtilsMessengerEXT debugMessenger;
   #endif
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+  VkDevice device;
+  VkQueue graphicsQueue;
 };
 
 int main() {
