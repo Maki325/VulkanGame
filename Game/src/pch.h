@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <map>
+#include <optional>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE

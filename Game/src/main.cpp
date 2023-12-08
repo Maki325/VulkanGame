@@ -53,6 +53,7 @@ private:
     #ifdef GAME_DEBUG
       setupDebugMessenger();
     #endif
+    pickPhysicalDevice();
   }
 
   #ifdef GAME_DEBUG
@@ -131,6 +132,17 @@ private:
 
     return true;
   }
+
+  static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData
+  ) {
+    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+    return VK_FALSE;
+  }
   #endif
 
   std::vector<const char*> getRequiredExtensions() {
@@ -145,17 +157,6 @@ private:
     #endif
 
     return extensions;
-  }
-
-  static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData) {
-
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
-    return VK_FALSE;
   }
 
   void createInstance() {
@@ -210,6 +211,100 @@ private:
     }
   }
 
+  void pickPhysicalDevice() {
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+    if (deviceCount == 0) {
+      throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+    }
+
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+    // Use an ordered map to automatically sort candidates by increasing score
+    std::multimap<int, VkPhysicalDevice> candidates;
+
+    for (const auto& device : devices) {
+      int score = rateDeviceSuitability(device);
+      candidates.insert(std::make_pair(score, device));
+    }
+
+    // Check if the best candidate is suitable at all
+    if (candidates.rbegin()->first > 0) {
+      physicalDevice = candidates.rbegin()->second;
+    }
+    else {
+      throw std::runtime_error("failed to find a suitable GPU!");
+    }
+
+    if (physicalDevice == VK_NULL_HANDLE) {
+      throw std::runtime_error("Failed to find a suitable GPU!");
+    }
+  }
+
+  int rateDeviceSuitability(VkPhysicalDevice device) {
+    VkPhysicalDeviceProperties deviceProperties;
+    VkPhysicalDeviceFeatures deviceFeatures;
+
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+    // Application can't function without geometry shaders
+    if (!deviceFeatures.geometryShader) {
+      return 0;
+    }
+    QueueFamilyIndices indices = findQueueFamilies(device);
+
+    if (!indices.isComplete()) {
+      return 0;
+    }
+
+    int score = 0;
+
+    // Discrete GPUs have a significant performance advantage
+    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+      score += 1000;
+    }
+
+    // Maximum possible size of textures affects graphics quality
+    score += deviceProperties.limits.maxImageDimension2D;
+
+    return score;
+  }
+
+  struct QueueFamilyIndices {
+    std::optional<uint32_t> graphicsFamily;
+
+    bool isComplete() {
+      return graphicsFamily.has_value();
+    }
+  };
+
+  QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+    QueueFamilyIndices indices;
+
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    int i = 0;
+    for (const auto& queueFamily : queueFamilies) {
+      if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+        indices.graphicsFamily = i;
+      }
+      if (indices.isComplete()) {
+        break;
+      }
+
+      i++;
+    }
+
+    return indices;
+  }
+
   void mainLoop() {
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
@@ -218,7 +313,7 @@ private:
 
   void cleanup() {
     #ifdef GAME_DEBUG
-      // TODO: If I comment this line out it should give me an error in the console on closing down
+      // TODO: If I comment `DestroyDebugUtilsMessengerEXT` line out it should give me an error in the console on closing down
       // But it doesn't. The tutorial site says it's a problem with my installation
       // But it all seems fine. Idk
 
@@ -239,6 +334,7 @@ private:
   #ifdef GAME_DEBUG
     VkDebugUtilsMessengerEXT debugMessenger;
   #endif
+  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 };
 
 int main() {
