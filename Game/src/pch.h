@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <optional>
 
 #define GLM_FORCE_RADIANS
